@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rain Product Billing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="logo-rain">rain</span>
+        <span class="logo-sub">Product Billing</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Categories</div>
+      <ul id="categoryList" class="category-list"></ul>
+      <button class="btn-add-category" id="btnAddCategory">+ Add Category</button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="btn-manage-tags" id="btnManageTags">Manage Tags</button>
+      <button class="btn-import" id="btnImport">Import XLSX</button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- Header bar -->
+    <header class="topbar">
+      <div class="topbar-title" id="topbarTitle">Select a category</div>
+      <div class="topbar-actions">
+        <button class="btn-primary hidden" id="btnAddProduct">+ Add Product</button>
+      </div>
+    </header>
+
+    <!-- Products grid -->
+    <section class="products-section" id="productsSection">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">📂</div>
+        <p>Select a category from the menu to view products</p>
+      </div>
+      <div id="productsGrid" class="products-grid hidden"></div>
+    </section>
+
+    <!-- Product Detail Panel -->
+    <div class="detail-panel hidden" id="detailPanel">
+      <div class="detail-header">
+        <button class="btn-back" id="btnBack">← Back</button>
+        <div class="detail-actions">
+          <button class="btn-edit" id="btnEditProduct">Edit</button>
+          <button class="btn-delete" id="btnDeleteProduct">Delete</button>
+        </div>
+      </div>
+      <div class="detail-body" id="detailBody"></div>
+    </div>
+
+  </main>
+
+  <!-- Modal: Add/Edit Category -->
+  <div class="modal-overlay hidden" id="modalCategory">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalCategoryTitle">Add Category</h2>
+        <button class="modal-close" data-modal="modalCategory">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editCategoryId" />
+        <label class="form-label">Category Name</label>
+        <input type="text" class="form-input" id="categoryName" placeholder="e.g. rainone Home" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalCategory">Cancel</button>
+        <button class="btn-primary" id="btnSaveCategory">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add/Edit Product -->
+  <div class="modal-overlay hidden" id="modalProduct">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h2 id="modalProductTitle">Add Product</h2>
+        <button class="modal-close" data-modal="modalProduct">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editProductId" />
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-input" id="productCategory"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Product Name</label>
+            <input type="text" class="form-input" id="productName" placeholder="e.g. RAINONE HOME 5G" />
+          </div>
+          <div class="form-group form-group-full">
+            <label class="form-label">Description</label>
+            <textarea class="form-input form-textarea" id="productDescription" placeholder="Product description..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Excl. VAT (R)</label>
+            <input type="number" class="form-input" id="productExclVat" step="0.01" placeholder="0.00" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Incl. VAT (R)</label>
+            <input type="number" class="form-input" id="productInclVat" step="0.01" placeholder="0.00" />
+          </div>
+          <div class="form-group form-group-full" id="tagsContainer">
+            <label class="form-label">Tags</label>
+            <div id="tagsGrid" class="tags-grid"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalProduct">Cancel</button>
+        <button class="btn-primary" id="btnSaveProduct">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Manage Tags -->
+  <div class="modal-overlay hidden" id="modalTags">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h2>Manage Tags</h2>
+        <button class="modal-close" data-modal="modalTags">×</button>
+      </div>
+      <div class="modal-body" id="tagsManagerBody"></div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalTags">Close</button>
+        <button class="btn-primary" id="btnAddTagType">+ Add Tag Group</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Import XLSX -->
+  <div class="modal-overlay hidden" id="modalImport">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Import XLSX</h2>
+        <button class="modal-close" data-modal="modalImport">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="import-info">Expected columns: <strong>category, product, description, tax_excluded_amount_value, tax_included_amount_value</strong></p>
+        <label class="form-label">Select XLSX file</label>
+        <input type="file" class="form-input" id="importFile" accept=".xlsx,.xls" />
+        <div class="import-result hidden" id="importResult"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modalImport">Cancel</button>
+        <button class="btn-primary" id="btnDoImport">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
