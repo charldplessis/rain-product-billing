@@ -13,16 +13,21 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// DB connection pool
-const pool = mysql.createPool({
-  host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
-  port: process.env.MYSQLPORT || process.env.DB_PORT || 3306,
-  user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
-  password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
-  database: process.env.MYSQLDATABASE || process.env.DB_NAME || 'rain_billing',
-  waitForConnections: true,
-  connectionLimit: 10,
-});
+// DB connection pool - support URL or individual vars
+const poolConfig = process.env.MYSQL_URL
+  ? { uri: process.env.MYSQL_URL, waitForConnections: true, connectionLimit: 10 }
+  : {
+      host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.MYSQLPORT || process.env.DB_PORT || '3306'),
+      user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
+      password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
+      database: process.env.MYSQLDATABASE || process.env.DB_NAME || 'rain_billing',
+      waitForConnections: true,
+      connectionLimit: 10,
+      connectTimeout: 20000,
+    };
+
+const pool = mysql.createPool(poolConfig);
 
 // Init DB tables
 async function initDB() {
@@ -261,9 +266,23 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────
-initDB().then(() => {
-  app.listen(PORT, () => console.log(`rain Product Billing running on port ${PORT}`));
-}).catch(err => {
-  console.error('DB init failed:', err);
-  process.exit(1);
-});
+async function startWithRetry(attempts = 10, delay = 5000) {
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      await initDB();
+      app.listen(PORT, () => console.log(`rain Product Billing running on port ${PORT}`));
+      return;
+    } catch (err) {
+      console.error(`DB init attempt ${i}/${attempts} failed:`, err.message);
+      if (i < attempts) {
+        console.log(`Retrying in ${delay / 1000}s...`);
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        console.error('All DB init attempts failed. Exiting.');
+        process.exit(1);
+      }
+    }
+  }
+}
+
+startWithRetry();
