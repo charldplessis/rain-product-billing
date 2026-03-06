@@ -1,0 +1,14 @@
+stages:
+  - deploy
+
+deploy_to_railway:
+  stage: deploy
+  image: node:20-slim
+  only:
+    - master
+  script:
+    - npm install -g @railway/cli
+    - railway up --detach
+  environment:
+    name: production
+    url: https://rain-product-billing-production.up.railway.app
