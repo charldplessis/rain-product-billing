@@ -4,7 +4,7 @@ metadata:
   name: rain-product-billing
   description: Internal wiki for rain product billing — lists all products with descriptions, categories, and billing amounts (excl/incl VAT).
   annotations:
-    github.com/project-slug: charldplessis/rain-product-billing
+    gitlab.com/project-slug: charl.du.plessis/rain-product-billing
   links:
     - url: https://rain-product-billing-production.up.railway.app
       title: Live App
