@@ -255,8 +255,35 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
     const conn = await pool.getConnection();
     let imported = 0;
     try {
+      // Build tag cache keyed by type name → tag name → tag id
+      const tagCache = {};
+      const [ttRows] = await conn.query('SELECT id, name FROM tag_types');
+      for (const tt of ttRows) {
+        const [tagRows] = await conn.query('SELECT id, name FROM tags WHERE tag_type_id=?', [tt.id]);
+        tagCache[tt.name] = { __typeId: tt.id };
+        for (const t of tagRows) tagCache[tt.name][t.name] = t.id;
+      }
+
+      async function resolveTagId(typeName, tagName) {
+        if (!tagCache[typeName]) {
+          const [r] = await conn.query('INSERT INTO tag_types (name) VALUES (?)', [typeName]);
+          tagCache[typeName] = { __typeId: r.insertId };
+        }
+        if (!tagCache[typeName][tagName]) {
+          const typeId = tagCache[typeName].__typeId;
+          const [r] = await conn.query('INSERT IGNORE INTO tags (tag_type_id, name) VALUES (?,?)', [typeId, tagName]);
+          if (r.insertId) {
+            tagCache[typeName][tagName] = r.insertId;
+          } else {
+            const [[t]] = await conn.query('SELECT id FROM tags WHERE tag_type_id=? AND name=?', [typeId, tagName]);
+            tagCache[typeName][tagName] = t.id;
+          }
+        }
+        return tagCache[typeName][tagName];
+      }
+
       for (let i = 1; i < data.length; i++) {
-        const [catName, prodName, desc, exclVat, inclVat] = data[i];
+        const [catName, prodName, desc, exclVat, inclVat, salesChannelRaw, stateRaw] = data[i];
         if (!catName || !prodName) continue;
 
         let [[cat]] = await conn.query('SELECT id FROM categories WHERE name=?', [catName]);
@@ -265,10 +292,26 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
           cat = { id: r.insertId };
         }
 
-        await conn.query(
+        const [prodResult] = await conn.query(
           'INSERT INTO products (category_id, name, description, excl_vat, incl_vat) VALUES (?,?,?,?,?)',
           [cat.id, prodName, desc || '', exclVat || 0, inclVat || 0]
         );
+        const productId = prodResult.insertId;
+
+        const tagIds = [];
+        if (salesChannelRaw) {
+          for (const ch of String(salesChannelRaw).split(',').map(s => s.trim()).filter(Boolean)) {
+            tagIds.push(await resolveTagId('Sales Channel', ch));
+          }
+        }
+        if (stateRaw) {
+          tagIds.push(await resolveTagId('Active State', String(stateRaw).trim()));
+        }
+        if (tagIds.length > 0) {
+          const values = tagIds.map(tid => [productId, tid]);
+          await conn.query('INSERT IGNORE INTO product_tags (product_id, tag_id) VALUES ?', [values]);
+        }
+
         imported++;
       }
     } finally {
