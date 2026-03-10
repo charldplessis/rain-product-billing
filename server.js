@@ -12,19 +12,6 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// ── Basic Auth ────────────────────────────────────────────────
-const AUTH_USER = process.env.AUTH_USER || 'rain';
-const AUTH_PASS = process.env.AUTH_PASS || 'billing';
-
-app.use((req, res, next) => {
-  const auth = req.headers['authorization'];
-  if (auth && auth.startsWith('Basic ')) {
-    const [user, pass] = Buffer.from(auth.slice(6), 'base64').toString().split(':');
-    if (user === AUTH_USER && pass === AUTH_PASS) return next();
-  }
-  res.set('WWW-Authenticate', 'Basic realm="rain Product Billing"');
-  res.status(401).send('Authentication required');
-});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
